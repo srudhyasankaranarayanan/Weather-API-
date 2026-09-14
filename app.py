@@ -1,8 +1,7 @@
-import os
 import json
 import requests
 import streamlit as st
-from huggingface_hub import InferenceClient
+from groq import Groq
 
 
 st.set_page_config(
@@ -16,25 +15,19 @@ st.title("🌤️ AI Weather Assistant")
 st.write("Ask about the current weather of any city.")
 
 
-HF_TOKEN = os.getenv("Access_Token")
+GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 
-
-if not HF_TOKEN:
-    st.error("Hugging Face token is missing.")
-    st.stop()
-
-
-client = InferenceClient(
-    api_key=HF_TOKEN
+client = Groq(
+    api_key=GROQ_API_KEY
 )
 
 
-MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+MODEL = "llama-3.1-8b-instant"
 
 
 def get_weather(city):
 
-    location_request = requests.get(
+    location_response = requests.get(
         "https://geocoding-api.open-meteo.com/v1/search",
         params={
             "name": city,
@@ -44,7 +37,7 @@ def get_weather(city):
         timeout=10
     )
 
-    location_data = location_request.json()
+    location_data = location_response.json()
 
     if "results" not in location_data:
         return {
@@ -53,7 +46,7 @@ def get_weather(city):
 
     location = location_data["results"][0]
 
-    weather_request = requests.get(
+    weather_response = requests.get(
         "https://api.open-meteo.com/v1/forecast",
         params={
             "latitude": location["latitude"],
@@ -64,7 +57,7 @@ def get_weather(city):
         timeout=10
     )
 
-    weather_data = weather_request.json()["current"]
+    weather_data = weather_response.json()["current"]
 
     return {
         "city": location["name"],
@@ -115,7 +108,7 @@ if st.button("🌤️ Get Weather"):
         }
     ]
 
-    with st.spinner("AI is checking the weather..."):
+    with st.spinner("Checking weather..."):
 
         try:
 
@@ -176,7 +169,7 @@ if st.button("🌤️ Get Weather"):
                     final_response.choices[0].message.content
                 )
 
-                st.subheader("📊 Weather Data")
+                st.subheader("📊 Weather Details")
 
                 col1, col2, col3 = st.columns(3)
 
@@ -200,9 +193,7 @@ if st.button("🌤️ Get Weather"):
 
             else:
 
-                st.write(
-                    assistant_message.content
-                )
+                st.write(assistant_message.content)
 
         except Exception as error:
 
